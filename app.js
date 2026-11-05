@@ -53,23 +53,20 @@ app.get('/error-uji', () => {
 app.use(notFoundHandler);
 app.use(errorHandler);
 
-const DB_URI = process.env.DB_URI;
 
+const DB_URI = process.env.DB_URI; mongodb://localhost:27017/hotel_lopi
 if (!DB_URI) {
-  console.warn('PERINGATAN: DB_URI belum diatur di file .env. Menggunakan mode server tanpa MongoDB atau silakan isi DB_URI Anda.');
-  app.listen(PORT, () => {
-    console.log(`Server berjalan di http://localhost:${PORT} (tanpa koneksi MongoDB)`);
-  });
-} else {
-  mongoose.connect(DB_URI)
-    .then(() => {
-      console.log('Terhubung ke MongoDB');
-      app.listen(PORT, () => console.log(`Server berjalan di http://localhost:${PORT}`));
-    })
-    .catch((err) => {
-      console.error('Gagal terhubung ke MongoDB:', err.message);
-      process.exit(1);
-    });
+  console.error('DB_URI tidak ditemukan di .env! Silakan isi DB_URI terlebih dahulu.');
+  process.exit(1);
 }
+mongoose.connect(process.env.MONGODB_URI)
+  .then(() => {
+    console.log('Terhubung ke MongoDB');
+    app.listen(PORT, () => console.log(`Server berjalan di http://localhost:${PORT}`));
+  })
+  .catch((err) => {
+    console.error('Gagal terhubung:', err.message);
+    process.exit(1);
+  });
 
 module.exports = app;
