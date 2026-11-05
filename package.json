@@ -1,5 +1,5 @@
 {
-  "name": "tugas1-restful-2327240123",
+  "name": "uts-pawii-darmalopii",
   "version": "1.0.0",
   "description": "",
   "main": "app.js",
@@ -106,14 +106,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/mdarmalopi2327240123-create/tugas1-restful-2327240123-lopi.git"
+    "url": "git+https://github.com/mdarmalopi2327240123-create/uts-pawii-darmalopii.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "bugs": {
-    "url": "https://github.com/mdarmalopi2327240123-create/tugas1-restful-2327240123-lopi/issues"
+    "url": "https://github.com/mdarmalopi2327240123-create/uts-pawii-darmalopii/issues"
   },
-  "homepage": "https://github.com/mdarmalopi2327240123-create/tugas1-restful-2327240123-lopi#readme"
+  "homepage": "https://github.com/mdarmalopi2327240123-create/uts-pawii-darmalopii#readme"
 }

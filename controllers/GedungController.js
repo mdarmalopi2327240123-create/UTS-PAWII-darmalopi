@@ -1,13 +1,15 @@
-const Instruktur = require('../models/HotelModel');
+const Gedung = require('../models/GedungModels');
 const { errorHttp } = require('../middleware/errorHandler');
 
 exports.create = async (req, res, next) => {
   try {
-    const instruktur = await Instruktur.create(req.body);
+    const { kode, nama } = req.body;
+    if (!kode || !nama) return next(errorHttp(400, 'Field kode dan nama wajib diisi'));
+    const gedung = await Gedung.create({ kode, nama });
     res.status(201).json({
       status: 'success',
-      message: 'Instruktur berhasil ditambahkan',
-      data: instruktur
+      message: 'Gedung berhasil ditambahkan',
+      data: gedung
     });
   } catch (err) {
     next(err);
@@ -16,11 +18,7 @@ exports.create = async (req, res, next) => {
 
 exports.getAll = async (req, res, next) => {
   try {
-    const filter = {};
-    if (req.query.keahlianBahasa) {
-      filter.keahlianBahasa = new RegExp(String(req.query.keahlianBahasa), 'i');
-    }
-    const data = await Instruktur.find(filter);
+    const data = await Gedung.find().sort({ kode: 1 });
     res.json({
       status: 'success',
       total: data.length,
@@ -33,12 +31,9 @@ exports.getAll = async (req, res, next) => {
 
 exports.getById = async (req, res, next) => {
   try {
-    const data = await Instruktur.findById(req.params.id);
-    if (!data) return next(errorHttp(404, `Instruktur dengan id ${req.params.id} tidak ditemukan`));
-    res.json({
-      status: 'success',
-      data
-    });
+    const data = await Gedung.findById(req.params.id);
+    if (!data) return next(errorHttp(404, `Gedung dengan id ${req.params.id} tidak ditemukan`));
+    res.json({ status: 'success', data });
   } catch (err) {
     next(err);
   }
@@ -46,15 +41,18 @@ exports.getById = async (req, res, next) => {
 
 exports.update = async (req, res, next) => {
   try {
-    const data = await Instruktur.findByIdAndUpdate(
+    const updates = {};
+    if (req.body.kode !== undefined) updates.kode = req.body.kode;
+    if (req.body.nama !== undefined) updates.nama = req.body.nama;
+    const data = await Gedung.findByIdAndUpdate(
       req.params.id,
-      req.body,
+      updates,
       { returnDocument: 'after', runValidators: true }
     );
-    if (!data) return next(errorHttp(404, `Instruktur dengan id ${req.params.id} tidak ditemukan`));
+    if (!data) return next(errorHttp(404, `Gedung dengan id ${req.params.id} tidak ditemukan`));
     res.json({
       status: 'success',
-      message: 'Data instruktur berhasil diperbarui',
+      message: 'Gedung berhasil diperbarui',
       data
     });
   } catch (err) {
@@ -64,11 +62,11 @@ exports.update = async (req, res, next) => {
 
 exports.remove = async (req, res, next) => {
   try {
-    const data = await Instruktur.findByIdAndDelete(req.params.id);
-    if (!data) return next(errorHttp(404, `Instruktur dengan id ${req.params.id} tidak ditemukan`));
+    const data = await Gedung.findByIdAndDelete(req.params.id);
+    if (!data) return next(errorHttp(404, `Gedung dengan id ${req.params.id} tidak ditemukan`));
     res.json({
       status: 'success',
-      message: `Instruktur dengan id ${req.params.id} berhasil dihapus`,
+      message: `Gedung dengan id ${req.params.id} berhasil dihapus`,
       data: null
     });
   } catch (err) {

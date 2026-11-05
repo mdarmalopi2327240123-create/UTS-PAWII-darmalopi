@@ -1,98 +1,19 @@
-const KelasBahasa = require('../models/Model');
-const Instruktur = require('../models/GedungModels');
+const Kamar = require('../models/KamarModels');
+const Gedung = require('../models/GedungModels');
 const { errorHttp } = require('../middleware/errorHandler');
-
-const LIMIT_DEFAULT = 10;
-const LIMIT_MAKS = 50;
-const FIELD_SORT = ['typeKamar', 'WaktuBooking', 'Bedtype', 'biaya', 'createdAt'];
-const FIELD_BOLEH_DIPILIH = ['typekamar', 'WaktuBooking', 'Bedtype', 'biaya', 'createdAt', 'updatedAt'];
-
-// Mengubah bilangan dari query string menjadi bilangan bulat yang aman
-function angkaAman(nilai, bawaan, min, maks) {
-  const n = parseInt(nilai, 10);
-  if (Number.isNaN(n)) return bawaan;
-  return Math.min(Math.max(n, min), maks);
-}
 
 exports.getAll = async (req, res, next) => {
   try {
     const filter = {};
-
-    
-    if (req.query.hotel) {
-      filter.typeKamar = new RegExp(`^${req.query.typeKamar}$`, 'i');
+    if (req.query.status !== undefined) {
+      filter.status = String(req.query.status).trim();
     }
 
-    if (req.query.Bedtype) {
-      filter.Bedtype = String(req.query.Bedtype).toLowerCase();
-    }
-
-    // Filter berdasarkan hari jadwal (nested embedded filter)
-    if (req.query.WaktuBooking) {
-      filter['WaktuBooking'] = new RegExp(`^${req.query.WaktuBooking}$`, 'i');
-    }
-
-    // Filter berdasarkan nama atau email instruktur (referencing filter)
-    if (req.query.instruktur) {
-      const regexInstruktur = new RegExp(String(req.query.instruktur), 'i');
-      const instrukturList = await Instruktur.find({
-        $or: [
-          { nama: regexInstruktur },
-          { email: regexInstruktur }
-        ]
-      }).select('_id');
-      
-      const instrukturIds = instrukturList.map((i) => i._id);
-      filter.instrukturId = { $in: instrukturIds };
-    }
-
-    // 2. PAGINATION
-    const page = angkaAman(req.query.page, 1, 1, Number.MAX_SAFE_INTEGER);
-    const limit = angkaAman(req.query.limit, LIMIT_DEFAULT, 1, LIMIT_MAKS);
-
-    // 3. SORTING: ?sort=biaya (naik) atau ?sort=-biaya (turun)
-    const sortParam = String(req.query.sort || '-createdAt');
-    const arah = sortParam.startsWith('-') ? -1 : 1;
-    const sortField = sortParam.replace(/^-/, '');
-
-    if (!FIELD_SORT.includes(sortField)) {
-      return next(errorHttp(400, `Parameter sort hanya boleh salah satu dari: ${FIELD_SORT.join(', ')}`));
-    }
-
-    // 4. PROJECTION: ?fields=namaKelas,biaya,bahasa
-    let select = '';
-    if (req.query.fields) {
-      const fields = String(req.query.fields).split(',').map((f) => f.trim()).filter(Boolean);
-      if (!fields.every((f) => FIELD_BOLEH_DIPILIH.includes(f))) {
-        return next(errorHttp(400, `Parameter fields hanya boleh berisi: ${FIELD_BOLEH_DIPILIH.join(', ')}`));
-      }
-      select = fields.join(' ');
-    }
-
-    // Eksekusi query dengan Mongoose
-    const query = KelasBahasa.find(filter)
-      .select(select)
-      .sort({ [sortField]: arah, _id: 1 })
-      .skip((page - 1) * limit)
-      .limit(limit);
-
-    // Populate instruktur bila instrukturId terpilih atau projection tidak dibatasi
-    if (!select || select.split(' ').includes('instrukturId')) {
-      query.populate('instrukturId', 'nama email keahlianBahasa');
-    }
-
-    const [data, total] = await Promise.all([
-      query,
-      KelasBahasa.countDocuments(filter)
-    ]);
-
+    const data = await Kamar.find(filter).populate('gedungId', 'kode nama').sort({ createdAt: -1 });
     res.json({
       status: 'success',
-      page,
-      limit,
-      total,
-      totalPages: Math.ceil(total / limit),
-      data
+      total: data.length,
+      data,
     });
   } catch (err) {
     next(err);
@@ -101,12 +22,9 @@ exports.getAll = async (req, res, next) => {
 
 exports.getById = async (req, res, next) => {
   try {
-    const data = await KelasBahasa.findById(req.params.id).populate('instrukturId', 'nama email keahlianBahasa');
-    if (!data) return next(errorHttp(404, `Data kelas dengan id ${req.params.id} tidak ditemukan`));
-    res.json({
-      status: 'success',
-      data
-    });
+    const data = await Kamar.findById(req.params.id).populate('gedungId', 'kode nama');
+    if (!data) return next(errorHttp(404, `Kamar dengan id ${req.params.id} tidak ditemukan`));
+    res.json({ status: 'success', data });
   } catch (err) {
     next(err);
   }
@@ -114,35 +32,28 @@ exports.getById = async (req, res, next) => {
 
 exports.create = async (req, res, next) => {
   try {
-    const { namaKelas, bahasa, level, jumlahPertemuan, biaya, jadwal, instrukturId } = req.body;
-
-    if (!namaKelas || !bahasa || !level || jumlahPertemuan === undefined || biaya === undefined) {
-      return next(errorHttp(400, 'Field namaKelas, bahasa, level, jumlahPertemuan, dan biaya wajib diisi'));
+    const { nomorKamar, namaKamar, hargaPerMalam, status, fasilitas, gedungId } = req.body;
+    if (!nomorKamar || !namaKamar || hargaPerMalam === undefined || !status || !gedungId) {
+      return next(errorHttp(400, 'Field nomorKamar, namaKamar, hargaPerMalam, status, dan gedungId wajib diisi'));
     }
 
-    // Validasi instruktur jika dikirim
-    if (instrukturId) {
-      const instrukturAda = await Instruktur.findById(instrukturId);
-      if (!instrukturAda) {
-        return next(errorHttp(400, `Instruktur dengan id ${instrukturId} tidak ditemukan`));
-      }
+    const gedungAda = await Gedung.findById(gedungId);
+    if (!gedungAda) {
+      return next(errorHttp(400, `Gedung dengan id ${gedungId} tidak ditemukan`));
     }
 
-    const baru = await KelasBahasa.create({
-      namaKelas,
-      bahasa,
-      level,
-      jumlahPertemuan: Number(jumlahPertemuan),
-      biaya: Number(biaya),
-      jadwal,
-      instrukturId: instrukturId || null
+    const baru = await Kamar.create({
+      nomorKamar,
+      namaKamar,
+      hargaPerMalam,
+      status,
+      fasilitas,
+      gedungId
     });
-
-    const populated = await baru.populate('instrukturId', 'nama email keahlianBahasa');
-
+    const populated = await baru.populate('gedungId', 'kode nama');
     res.status(201).json({
       status: 'success',
-      message: 'Data kelas berhasil ditambahkan',
+      message: 'Kamar berhasil ditambahkan',
       data: populated
     });
   } catch (err) {
@@ -152,25 +63,27 @@ exports.create = async (req, res, next) => {
 
 exports.update = async (req, res, next) => {
   try {
-    const { instrukturId } = req.body;
-    if (instrukturId) {
-      const instrukturAda = await Instruktur.findById(instrukturId);
-      if (!instrukturAda) {
-        return next(errorHttp(400, `Instruktur dengan id ${instrukturId} tidak ditemukan`));
-      }
+    const allowedFields = ['nomorKamar', 'namaKamar', 'hargaPerMalam', 'status', 'fasilitas', 'gedungId'];
+    const updates = Object.fromEntries(
+      Object.entries(req.body).filter(([field]) => allowedFields.includes(field))
+    );
+
+    if (updates.gedungId) {
+      const gedungAda = await Gedung.findById(updates.gedungId);
+      if (!gedungAda) return next(errorHttp(400, `Gedung dengan id ${updates.gedungId} tidak ditemukan`));
     }
 
-    const hasil = await KelasBahasa.findByIdAndUpdate(
+    const hasil = await Kamar.findByIdAndUpdate(
       req.params.id,
-      req.body,
+      updates,
       { returnDocument: 'after', runValidators: true }
-    ).populate('instrukturId', 'nama email keahlianBahasa');
+    ).populate('gedungId', 'kode nama');
 
-    if (!hasil) return next(errorHttp(404, `Data kelas dengan id ${req.params.id} tidak ditemukan`));
+    if (!hasil) return next(errorHttp(404, `Kamar dengan id ${req.params.id} tidak ditemukan`));
 
     res.status(200).json({
       status: 'success',
-      message: 'Data kelas berhasil diubah',
+      message: 'Kamar berhasil diperbarui',
       data: hasil
     });
   } catch (err) {
@@ -180,12 +93,11 @@ exports.update = async (req, res, next) => {
 
 exports.remove = async (req, res, next) => {
   try {
-    const data = await KelasBahasa.findByIdAndDelete(req.params.id);
-    if (!data) return next(errorHttp(404, `Data kelas dengan id ${req.params.id} tidak ditemukan`));
-
+    const data = await Kamar.findByIdAndDelete(req.params.id);
+    if (!data) return next(errorHttp(404, `Kamar dengan id ${req.params.id} tidak ditemukan`));
     res.status(200).json({
       status: 'success',
-      message: `Data kelas dengan id ${req.params.id} berhasil dihapus`,
+      message: `Kamar dengan id ${req.params.id} berhasil dihapus`,
       data: null
     });
   } catch (err) {

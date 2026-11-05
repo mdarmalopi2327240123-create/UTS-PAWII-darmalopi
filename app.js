@@ -7,8 +7,8 @@ const mongoose = require('mongoose');
 const logger = require('./middleware/logger');
 const { notFoundHandler, errorHandler } = require('./middleware/errorHandler');
 
-const Hotel = require('./routes/GedungRoutes');
-const instrukturRoutes = require('./routes/GedungRoutes');
+const kamarRoutes = require('./routes/KamarRoutes');
+const gedungRoutes = require('./routes/GedungRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -24,39 +24,35 @@ app.use(express.json());
 // ---------- Route dasar ----------
 app.get('/', (req, res) => {
   res.json({
-    nama_pelaggan: "Jessica",
-    id: "105",
-    nomor_topik: 5,
-    topik: "Kelas Bahasa (dengan MongoDB, Embedding & Referencing)",
+    topik: 'Manajemen Kamar dan Gedung',
     daftar_endpoint: [
-      "GET /kelas-bahasa (Mendukung ?bahasa=..&level=..&hari=..&instruktur=..&page=..&limit=..&sort=..&fields=..)",
-      "GET /kelas-bahasa/:id",
-      "POST /kelas-bahasa (Perlu Header x-api-key)",
-      "PUT /kelas-bahasa/:id (Perlu Header x-api-key)",
-      "DELETE /kelas-bahasa/:id (Perlu Header x-api-key)",
-      "GET /instruktur",
-      "GET /instruktur/:id",
-      "POST /instruktur (Perlu Header x-api-key)",
-      "PUT /instruktur/:id (Perlu Header x-api-key)",
-      "DELETE /instruktur/:id (Perlu Header x-api-key)"
+      'GET /kamar (mendukung ?status=tersedia)',
+      'GET /kamar/:id',
+      'POST /kamar (Perlu Header x-api-key)',
+      'PUT /kamar/:id (Perlu Header x-api-key)',
+      'DELETE /kamar/:id (Perlu Header x-api-key)',
+      'GET /gedung',
+      'GET /gedung/:id',
+      'POST /gedung (Perlu Header x-api-key)',
+      'PUT /gedung/:id (Perlu Header x-api-key)',
+      'DELETE /gedung/:id (Perlu Header x-api-key)'
     ]
   });
 });
 
 // ---------- Route per modul ----------
-app.use('/kelas-bahasa', kelasBahasaRoutes);
-app.use('/instruktur', instrukturRoutes);
+app.use('/kamar', kamarRoutes);
+app.use('/gedung', gedungRoutes);
 
 // Route untuk mensimulasikan error tak terduga
 app.get('/error-uji', () => {
   throw new Error('Kesalahan tak terduga untuk pengujian');
 });
 
-// ---------- Handler 404 dan error handler (paling bawah) ----------
+
 app.use(notFoundHandler);
 app.use(errorHandler);
 
-// Koneksi ke MongoDB Atlas / Lokal
 const DB_URI = process.env.DB_URI;
 
 if (!DB_URI) {

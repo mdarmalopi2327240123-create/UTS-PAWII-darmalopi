@@ -1,23 +1,17 @@
 const mongoose = require('mongoose');
 
-const Schema = new mongoose.Schema({
-  nama: {
+const gedungSchema = new mongoose.Schema({
+  kode: {
     type: String,
-    required: [true, 'Nama instruktur wajib diisi'],
+    required: [true, 'Kode gedung wajib diisi'],
+    unique: true,
     trim: true
   },
-  email: {
+  nama: {
     type: String,
-    required: [true, 'Email instruktur wajib diisi'],
-    unique: true,
-    trim: true,
-    lowercase: true
-  },
-  keahlianBahasa: {
-    type: String,
-    required: [true, 'Keahlian bahasa wajib diisi'],
+    required: [true, 'Nama gedung wajib diisi'],
     trim: true
   }
 }, { timestamps: true });
 
-module.exports = mongoose.model('Instruktur', instrukturSchema);
+module.exports = mongoose.model('Gedung', gedungSchema);
